@@ -1,0 +1,206 @@
+:root {
+    --editor-bg: rgba(22, 28, 41, 0.45);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --primary-color: #6366f1;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --status-green: #10b981;
+    --status-orange: #f59e0b;
+    --status-blue: #3b82f6;
+    --font-sans: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: transparent;
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: var(--editor-bg);
+}
+
+/* Toolbar */
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-color);
+    gap: 0.5rem;
+}
+
+.format-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.tool-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s ease;
+    font-family: var(--font-sans);
+}
+
+.tool-btn[data-command="insertUnorderedList"],
+.tool-btn[data-command="formatBlock"] {
+    width: auto;
+    padding: 0 0.65rem;
+}
+
+.tool-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+}
+
+.tool-btn:active {
+    transform: scale(0.95);
+}
+
+.toolbar-divider {
+    width: 1px;
+    height: 18px;
+    background-color: var(--border-color);
+    margin: 0 0.25rem;
+}
+
+/* Sync Status Indicators */
+.sync-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.sync-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sync-status-dot.idle {
+    background-color: var(--status-green);
+    box-shadow: 0 0 6px var(--status-green);
+}
+
+.sync-status-dot.syncing {
+    background-color: var(--status-orange);
+    box-shadow: 0 0 6px var(--status-orange);
+}
+
+.sync-status-dot.updating {
+    background-color: var(--status-blue);
+    box-shadow: 0 0 6px var(--status-blue);
+}
+
+.sync-status-dot.flash-sync {
+    animation: flash-green 0.6s ease-in-out;
+}
+
+.sync-status-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+/* Active tool state styling */
+.tool-btn.active {
+    background: rgba(99, 102, 241, 0.25);
+    border-color: rgba(99, 102, 241, 0.6);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.25);
+}
+
+@keyframes flash-green {
+    0% { background-color: var(--status-green); box-shadow: 0 0 4px var(--status-green); }
+    50% { background-color: #34d399; box-shadow: 0 0 14px #34d399; }
+    100% { background-color: var(--status-green); box-shadow: 0 0 4px var(--status-green); }
+}
+
+/* Content Area */
+.editor-area {
+    flex: 1;
+    padding: 1.25rem;
+    overflow-y: auto;
+    outline: none;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-main);
+}
+
+.editor-area[placeholder]:empty:before {
+    content: attr(placeholder);
+    color: rgba(255, 255, 255, 0.2);
+    cursor: text;
+}
+
+/* Heading styling within contenteditable */
+.editor-area h2 {
+    font-size: 1.35rem;
+    margin: 0.75rem 0 0.5rem 0;
+    color: #fff;
+    font-weight: 600;
+}
+
+.editor-area ul {
+    margin-left: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+/* Footer / Meta Bar */
+.editor-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.meta-item {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 4px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+}

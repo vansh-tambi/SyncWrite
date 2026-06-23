@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncWrite Editor</title>
+    <link rel="stylesheet" href="editor.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="editor-container">
+        <!-- Text Editor Toolbar -->
+        <header class="editor-toolbar">
+            <div class="format-group">
+                <button class="tool-btn" data-command="bold" title="Bold">
+                    <strong>B</strong>
+                </button>
+                <button class="tool-btn" data-command="italic" title="Italic">
+                    <em>I</em>
+                </button>
+                <button class="tool-btn" data-command="strikeThrough" title="Strikethrough">
+                    <del>S</del>
+                </button>
+            </div>
+            <div class="sync-status">
+                <span id="sync-icon" class="sync-status-dot idle"></span>
+                <span id="sync-text" class="sync-status-label">Synced</span>
+            </div>
+        </header>
+
+        <!-- Rich Text Input Area -->
+        <div id="rich-editor" class="editor-area" contenteditable="true" placeholder="Type and format text..."></div>
+
+        <!-- Footer / Meta Bar -->
+        <footer class="editor-footer">
+            <div class="meta-item">
+                <span id="editor-indicator">Loading Frame...</span>
+            </div>
+        </footer>
+    </div>
+    <script src="editor.js"></script>
+</body>
+</html>
