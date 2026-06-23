@@ -144,26 +144,42 @@ iframe {
 
 /* Footer Grid */
 .app-footer {
-    height: 220px;
-    min-height: 220px;
+    height: auto;
+    min-height: fit-content;
+    overflow: visible;
 }
 
 .footer-grid {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 1.5rem;
-    height: 100%;
+    height: auto;
+    min-height: fit-content;
+    overflow: visible;
 }
 
-.log-panel, .stats-panel {
+.log-panel {
     background-color: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: 16px;
-    height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    min-height: 220px;
+    height: 100%;
+}
+
+.stats-panel {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    height: auto;
+    min-height: fit-content;
 }
 
 .log-header, .stats-header {
@@ -268,29 +284,36 @@ iframe {
 
 /* Stats Cards Grid */
 .stats-content {
-    flex: 1;
-    padding: 1rem 1.25rem;
+    padding: 1.25rem;
     display: flex;
-    align-items: center;
+    align-items: stretch;
+    height: auto;
+    min-height: fit-content;
+    overflow: visible;
 }
 
 .stats-cards-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
     width: 100%;
+    height: auto;
+    min-height: fit-content;
+    overflow: visible;
 }
 
 .metric-card {
     background-color: rgba(255, 255, 255, 0.01);
     border: 1px solid var(--border-color);
-    padding: 0.75rem 1rem;
+    padding: 0.875rem 1.125rem;
     border-radius: 10px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 0.25rem;
+    justify-content: space-between;
+    gap: 0.375rem;
     transition: transform var(--transition-fast), border-color var(--transition-fast);
+    min-height: 75px;
+    height: 100%;
 }
 
 .metric-card:hover {
