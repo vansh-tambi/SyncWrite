@@ -173,8 +173,15 @@ iframe {
 
 /* Footer Log Panel */
 .app-footer {
-    height: 200px;
-    min-height: 200px;
+    height: 240px;
+    min-height: 240px;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1.5rem;
+    height: 100%;
 }
 
 .log-panel {
@@ -187,6 +194,82 @@ iframe {
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* Statistics Panel Layout */
+.stats-panel {
+    background: var(--card-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+}
+
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.stats-header h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-main);
+}
+
+.stats-content {
+    flex: 1;
+    padding: 0.75rem 1.25rem;
+    background: rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+    width: 100%;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.15rem;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.stat-card:hover {
+    border-color: rgba(99, 102, 241, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.stat-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-main);
+    font-family: var(--font-mono);
 }
 
 .log-header {
