@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncWrite — Host Page</title>
+    <title>SyncWrite</title>
     <link rel="stylesheet" href="index.css">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -14,40 +13,36 @@
     <div class="app-container">
         <header class="app-header">
             <div class="logo-area">
-                <div class="logo-icon">⇄</div>
+                <div class="logo-icon">&lt;&gt;</div>
                 <div class="logo-text">
-                    <h1>SyncWrite Dashboard</h1>
-                    <span>Host Page Iframe Controller</span>
+                    <h1>SyncWrite</h1>
+                    <span>Iframe text synchronizer</span>
                 </div>
             </div>
             <div class="system-status">
                 <span class="status-indicator online"></span>
-                <span class="status-label">Host Active</span>
+                <span class="status-label">Active</span>
             </div>
         </header>
 
         <main class="workspace">
             <div class="pane-container">
-                <!-- Frame A Pane -->
                 <div class="editor-pane">
                     <div class="pane-header">
                         <span class="pane-title">Frame A</span>
-                        <div class="pane-badge">Iframe Left</div>
+                        <div class="pane-badge">Left</div>
                     </div>
                     <div class="iframe-wrapper">
-                        <!-- Frame A points to a placeholder or editor subpage -->
                         <iframe id="frame-a" name="frame-a" src="editor/editor.html?id=frame-a" title="Frame A"></iframe>
                     </div>
                 </div>
 
-                <!-- Frame B Pane -->
                 <div class="editor-pane">
                     <div class="pane-header">
                         <span class="pane-title">Frame B</span>
-                        <div class="pane-badge">Iframe Right</div>
+                        <div class="pane-badge">Right</div>
                     </div>
                     <div class="iframe-wrapper">
-                        <!-- Frame B points to a placeholder or editor subpage -->
                         <iframe id="frame-b" name="frame-b" src="editor/editor.html?id=frame-b" title="Frame B"></iframe>
                     </div>
                 </div>
@@ -56,21 +51,19 @@
 
         <footer class="app-footer">
             <div class="footer-grid">
-                <!-- Log Panel -->
                 <div class="log-panel">
                     <div class="log-header">
-                        <h3>Host Synchronization Logs</h3>
+                        <h3>Event Log</h3>
                         <button id="clear-logs" class="btn-clear">Clear Logs</button>
                     </div>
                     <div id="log-output" class="log-output">
-                        <div class="log-entry system-msg">[System] Waiting for Frame A & Frame B initialization...</div>
+                        <div class="log-entry system-msg">Ready for sync events...</div>
                     </div>
                 </div>
 
-                <!-- Sync Statistics Panel -->
                 <div class="stats-panel">
                     <div class="stats-header">
-                        <h3>Sync Statistics</h3>
+                        <h3>Stats</h3>
                         <button id="reset-stats" class="btn-clear">Reset Stats</button>
                     </div>
                     <div class="stats-content">

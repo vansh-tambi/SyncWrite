@@ -1,56 +1,48 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. DOM Element Cache
     const editor = document.getElementById('rich-editor');
     const editorIndicator = document.getElementById('editor-indicator');
     const toolButtons = document.querySelectorAll('.tool-btn');
 
-    // Identify current frame name using URL search parameters (e.g. ?id=frame-a)
     const urlParams = new URLSearchParams(window.location.search);
     const frameId = urlParams.get('id') || 'unknown';
     editorIndicator.textContent = frameId.toUpperCase();
 
-    // Loop prevention and sequence tracking state
-    let isApplyingRemoteChange = false;
+    let isRemoteUpdate = false;
     let lastContent = editor.innerHTML;
     let lastReceivedTimestamp = 0;
 
-    // Message deduplication cache
-    const processedMessageIds = new Set();
-    const MESSAGE_ID_TTL_MS = 10000; // Deduplication window duration (10 seconds)
-    let debounceTimeoutId = null;
+    const seenIds = new Set();
+    const ID_TTL = 10000;
+    let debounceTimer = null;
 
-    // Resolve secure target origin context to avoid Wildcard leaks
     const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
 
-    // Client-side HTML Sanitizer mitigating basic XSS vectors
-    function sanitizeHTML(dirtyHTML) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = dirtyHTML;
+    // Basic XSS sanitization
+    function sanitize(html) {
+        const div = document.createElement('div');
+        div.innerHTML = html;
         
-        // Remove script tags
-        const scripts = tempDiv.getElementsByTagName('script');
+        const scripts = div.getElementsByTagName('script');
         let i = scripts.length;
         while (i--) {
             scripts[i].parentNode.removeChild(scripts[i]);
         }
 
-        // Clean event handler attributes (e.g. onload, onerror, onclick)
-        const allElements = tempDiv.getElementsByTagName('*');
-        for (let el of allElements) {
+        const elements = div.getElementsByTagName('*');
+        for (let el of elements) {
             const attrs = el.attributes;
             let j = attrs.length;
             while (j--) {
-                const attrName = attrs[j].name;
-                if (attrName.startsWith('on')) {
-                    el.removeAttribute(attrName);
+                const attr = attrs[j].name;
+                if (attr.startsWith('on')) {
+                    el.removeAttribute(attr);
                 }
             }
         }
-        return tempDiv.innerHTML;
+        return div.innerHTML;
     }
 
-    // Helper to query browser command state and toggle button highlighting
-    function updateToolbarState() {
+    function updateToolbar() {
         toolButtons.forEach(btn => {
             const command = btn.getAttribute('data-command');
             try {
@@ -59,311 +51,201 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     btn.classList.remove('active');
                 }
-            } catch (e) {
-                // Fail-safe for commands that aren't toggle states
-            }
+            } catch (e) {}
         });
     }
 
-    // Helper to trigger active sync visual notification inside iframe toolbar
-    function triggerSyncFlash(sourceId) {
-        const syncIcon = document.getElementById('sync-icon');
-        const syncText = document.getElementById('sync-text');
+    function flashStatus(sourceId) {
+        const icon = document.getElementById('sync-icon');
+        const text = document.getElementById('sync-text');
 
-        if (syncIcon && syncText) {
-            // Reset and trigger css transition flash
-            syncIcon.classList.remove('flash-sync');
-            void syncIcon.offsetWidth; // Force layout recalculation to restart animation
-            syncIcon.classList.add('flash-sync');
+        if (icon && text) {
+            icon.classList.remove('flash-sync');
+            void icon.offsetWidth; 
+            icon.classList.add('flash-sync');
 
-            // Format badge name from "frame-a" to "Frame A"
-            const nameFormatted = sourceId.replace('frame-', 'Frame ').toUpperCase();
-            syncText.textContent = `Synced (from ${nameFormatted})`;
+            const label = sourceId.replace('frame-', 'Frame ').toUpperCase();
+            text.textContent = `Synced (from ${label})`;
 
-            // Revert back to passive "Synced" after timeout
             setTimeout(() => {
-                syncText.textContent = 'Synced';
+                text.textContent = 'Synced';
             }, 1800);
         }
     }
 
-    /**
-     * Extracts the current HTML contents from the contenteditable div
-     * and sends a 'FORMAT_SYNC' message payload to the parent window.
-     * 
-     * @param {string} actionName - The style action performed (e.g., 'bold', 'italic', 'strikeThrough', 'input')
-     */
-    function broadcastFormatChange(actionName) {
-        // Guard check: Do not broadcast if we are applying a remote update
-        if (isApplyingRemoteChange) return;
+    function sendUpdate(action) {
+        if (isRemoteUpdate) return;
 
         const currentHTML = editor.innerHTML;
-
-        // Guard check: Avoid duplicate messages if the content hasn't actually modified
         if (currentHTML === lastContent) return;
 
         lastContent = currentHTML;
 
-        // Generate a cryptographically secure unique message ID
         const messageId = self.crypto.randomUUID ? self.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
-
-        // Construct message payload matching the required specifications
         const payload = {
-            messageId: messageId,
+            messageId,
             type: 'FORMAT_SYNC',
-            action: actionName,
+            action,
             html: currentHTML,
             senderId: frameId,
-            tsCreate: Date.now(), // Message creation timestamp
-            timestamp: Date.now() // timestamp helps host route updates in correct order
+            tsCreate: Date.now(),
+            timestamp: Date.now()
         };
 
-        // Cache our own messageId to prevent echo loop issues (if any)
-        processedMessageIds.add(messageId);
-        setTimeout(() => {
-            processedMessageIds.delete(messageId);
-        }, MESSAGE_ID_TTL_MS);
+        seenIds.add(messageId);
+        setTimeout(() => seenIds.delete(messageId), ID_TTL);
 
-        // Post message to parent window (Host page)
         window.parent.postMessage(payload, targetOrigin);
     }
 
-    /**
-     * Debounces the broadcast of formatting changes to prevent flooding the message channel.
-     * 
-     * @param {string} actionName - The action name
-     * @param {number} delayMs - Delay in milliseconds
-     */
-    function debounceBroadcast(actionName, delayMs) {
-        if (debounceTimeoutId) {
-            clearTimeout(debounceTimeoutId);
-        }
-        debounceTimeoutId = setTimeout(() => {
-            broadcastFormatChange(actionName);
-        }, delayMs);
+    function debounce(action, delay) {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => sendUpdate(action), delay);
     }
 
-    /**
-     * Handles formatting button clicks, executing browser document styling 
-     * and broadcasting changes to the parent frame.
-     * 
-     * @param {Event} event - The button click event object
-     */
-    function handleToolbarAction(event) {
-        // Guard check
-        if (isApplyingRemoteChange) return;
+    function handleToolbar(e) {
+        if (isRemoteUpdate) return;
+        if (debounceTimer) clearTimeout(debounceTimer);
 
-        // Cancel any pending debounced input synchronization to prevent race conditions
-        if (debounceTimeoutId) {
-            clearTimeout(debounceTimeoutId);
-        }
+        e.preventDefault();
+        const command = e.currentTarget.getAttribute('data-command');
 
-        // Prevent button click from steal focus from contenteditable div selection range
-        event.preventDefault();
-
-        const button = event.currentTarget;
-        const command = button.getAttribute('data-command');
-
-        // Apply visual text styling to current text selection
         document.execCommand(command, false, null);
-
-        // Keep focus inside editor
         editor.focus();
-
-        // Check active commands and update toolbar states
-        updateToolbarState();
-
-        // Broadcast the updated state and command name instantly
-        broadcastFormatChange(command);
+        updateToolbar();
+        sendUpdate(command);
     }
 
-    /**
-     * Handles manual key press or direct inputs in the editor, broadcasting content changes.
-     */
-    function handleManualInput() {
-        if (isApplyingRemoteChange) return;
-        updateToolbarState();
-        
-        // Debounce typing inputs by 300ms to avoid flooding the message channel
-        debounceBroadcast('input', 300);
+    function handleInput() {
+        if (isRemoteUpdate) return;
+        updateToolbar();
+        debounce('input', 300);
     }
 
-    /**
-     * Calculates the current selection/caret character offsets relative to the text content
-     * of the container element, using standard Selection and Range APIs.
-     * 
-     * @param {HTMLElement} element - The editor contenteditable element
-     * @returns {Object|null} {start, end} character offsets or null if no valid selection is active
-     */
-    function getSelectionCharacterOffsetWithin(element) {
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return null;
+    function getOffsets(element) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return null;
         
-        const range = selection.getRangeAt(0);
-        // Only track if selection boundaries are fully inside the target editor
+        const range = sel.getRangeAt(0);
         if (!element.contains(range.startContainer) || !element.contains(range.endContainer)) {
             return null;
         }
 
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(element);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        const start = preCaretRange.toString().length;
+        const preRange = range.cloneRange();
+        preRange.selectNodeContents(element);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        const start = preRange.toString().length;
 
-        preCaretRange.setEnd(range.endContainer, range.endOffset);
-        const end = preCaretRange.toString().length;
+        preRange.setEnd(range.endContainer, range.endOffset);
+        const end = preRange.toString().length;
 
         return { start, end };
     }
 
-    /**
-     * Restores selection boundaries in the container element using raw text offsets.
-     * High performance TreeWalker traversal is utilized here.
-     * 
-     * @param {HTMLElement} element - The editor contenteditable element
-     * @param {Object} offsets - The saved {start, end} character offsets
-     */
-    function setSelectionCharacterOffsetWithin(element, offsets) {
+    function setOffsets(element, offsets) {
         if (!offsets) return;
-        
-        const selection = window.getSelection();
-        if (!selection) return;
+        const sel = window.getSelection();
+        if (!sel) return;
 
         const range = document.createRange();
-        let currentOffset = 0;
-        let startNode = null;
-        let startNodeOffset = 0;
-        let endNode = null;
-        let endNodeOffset = 0;
+        let current = 0;
+        let startNode = null, startOffset = 0;
+        let endNode = null, endOffset = 0;
 
-        // TreeWalker search loop (native performance traversal)
         const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
         let node;
-        let foundStart = false;
-        let foundEnd = false;
+        let foundStart = false, foundEnd = false;
 
         while ((node = walker.nextNode())) {
-            const nextOffset = currentOffset + node.length;
-            if (!foundStart && offsets.start >= currentOffset && offsets.start <= nextOffset) {
+            const next = current + node.length;
+            if (!foundStart && offsets.start >= current && offsets.start <= next) {
                 startNode = node;
-                startNodeOffset = offsets.start - currentOffset;
+                startOffset = offsets.start - current;
                 foundStart = true;
             }
-            if (!foundEnd && offsets.end >= currentOffset && offsets.end <= nextOffset) {
+            if (!foundEnd && offsets.end >= current && offsets.end <= next) {
                 endNode = node;
-                endNodeOffset = offsets.end - currentOffset;
+                endOffset = offsets.end - current;
                 foundEnd = true;
             }
             if (foundStart && foundEnd) break;
-            currentOffset = nextOffset;
+            current = next;
         }
 
-        // Fallbacks if offset exceeds actual text boundary (e.g. text was deleted)
         if (!startNode) {
             startNode = element;
-            startNodeOffset = 0;
+            startOffset = 0;
         }
         if (!endNode) {
             endNode = startNode;
-            endNodeOffset = startNodeOffset;
+            endOffset = startOffset;
         }
 
         try {
-            range.setStart(startNode, startNodeOffset);
-            range.setEnd(endNode, endNodeOffset);
-            selection.removeAllRanges();
-            selection.addRange(range);
+            range.setStart(startNode, startOffset);
+            range.setEnd(endNode, endOffset);
+            sel.removeAllRanges();
+            sel.addRange(range);
         } catch (e) {
-            console.warn('[Caret Preservation] Failed to restore selection range', e);
+            console.warn('Failed to restore cursor selection', e);
         }
     }
 
-    // 2. Attach click listeners to toolbar buttons
-    toolButtons.forEach(btn => {
-        btn.addEventListener('mousedown', handleToolbarAction);
-    });
+    toolButtons.forEach(btn => btn.addEventListener('mousedown', handleToolbar));
+    editor.addEventListener('input', handleInput);
 
-    // 3. Attach input event listener to capture keyboard typing and pasting
-    editor.addEventListener('input', handleManualInput);
+    window.document.addEventListener('selectionchange', updateToolbar);
+    editor.addEventListener('keyup', updateToolbar);
+    editor.addEventListener('mouseup', updateToolbar);
 
-    // 4. Track cursor updates and selection bounds to adjust formatting buttons highlight
-    // FIX: Attach selection listener to the local window document context to prevent memory leak
-    window.document.addEventListener('selectionchange', updateToolbarState);
-    editor.addEventListener('keyup', updateToolbarState);
-    editor.addEventListener('mouseup', updateToolbarState);
-
-    // FIX: Unbind event handlers on iframe unload to reclaim RAM resources
     window.addEventListener('unload', () => {
-        toolButtons.forEach(btn => btn.removeEventListener('mousedown', handleToolbarAction));
-        editor.removeEventListener('input', handleManualInput);
-        window.document.removeEventListener('selectionchange', updateToolbarState);
-        editor.removeEventListener('keyup', updateToolbarState);
-        editor.removeEventListener('mouseup', updateToolbarState);
+        toolButtons.forEach(btn => btn.removeEventListener('mousedown', handleToolbar));
+        editor.removeEventListener('input', handleInput);
+        window.document.removeEventListener('selectionchange', updateToolbar);
+        editor.removeEventListener('keyup', updateToolbar);
+        editor.removeEventListener('mouseup', updateToolbar);
     });
 
-    // 5. Listen for incoming messages from Host and apply content directly
-    window.addEventListener('message', (event) => {
-        if (!event.data || typeof event.data !== 'object') return;
+    window.addEventListener('message', (e) => {
+        if (!e.data || typeof e.data !== 'object') return;
 
-        const { type, html, senderId, messageId, tsCreate, tsRelay, timestamp } = event.data;
+        const { type, html, senderId, messageId, tsCreate, tsRelay, timestamp } = e.data;
         if (type === 'FORMAT_SYNC') {
-            // FIX: Chronological Order validation (Reject out-of-order stale updates)
+            // Drop out-of-order messages
             const msgTime = timestamp || tsCreate;
-            if (msgTime && msgTime < lastReceivedTimestamp) {
-                console.warn('[Performance Diagnostics] Discarded out-of-order frame update');
-                return;
-            }
+            if (msgTime && msgTime < lastReceivedTimestamp) return;
             lastReceivedTimestamp = msgTime;
 
-            // Deduplication Guard: Ignore recently processed messages
-            if (messageId && processedMessageIds.has(messageId)) {
-                return;
-            }
+            if (messageId && seenIds.has(messageId)) return;
 
-            // Register messageId to deduplicate retries
             if (messageId) {
-                processedMessageIds.add(messageId);
-                setTimeout(() => {
-                    processedMessageIds.delete(messageId);
-                }, MESSAGE_ID_TTL_MS);
+                seenIds.add(messageId);
+                setTimeout(() => seenIds.delete(messageId), ID_TTL);
             }
 
-            // Guard Check: Skip updates if target HTML is already matching local HTML state
             if (editor.innerHTML === html) {
                 lastContent = html;
                 return;
             }
 
-            // Capture selection offsets prior to DOM modification if currently focused
-            const isEditorFocused = (document.activeElement === editor);
-            const savedCaretOffsets = isEditorFocused ? getSelectionCharacterOffsetWithin(editor) : null;
+            const isFocused = (document.activeElement === editor);
+            const savedOffsets = isFocused ? getOffsets(editor) : null;
 
-            // Set Lock to true prior to DOM mutation
-            isApplyingRemoteChange = true;
+            isRemoteUpdate = true;
 
-            // FIX: Apply input sanitization to filter scripting injection
-            const cleanHTML = sanitizeHTML(html);
+            const cleanHTML = sanitize(html);
             editor.innerHTML = cleanHTML;
             lastContent = cleanHTML;
 
-            // Restore selection offsets post DOM modification
-            if (isEditorFocused && savedCaretOffsets) {
-                setSelectionCharacterOffsetWithin(editor, savedCaretOffsets);
+            if (isFocused && savedOffsets) {
+                setOffsets(editor, savedOffsets);
             }
 
-            // Trigger sync UI notification
-            triggerSyncFlash(senderId || 'unknown');
+            flashStatus(senderId || 'unknown');
+            updateToolbar();
 
-            // Force button highlights update
-            updateToolbarState();
+            isRemoteUpdate = false;
 
-            // Release Lock after UI update has finished rendering
-            isApplyingRemoteChange = false;
-
-            // Capture receiver processing completion timestamp
-            const tsProcess = Date.now();
-
-            // Send performance metrics report to the parent window
             window.parent.postMessage({
                 type: 'SYNC_METRICS',
                 receiverId: frameId,
@@ -371,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 metrics: {
                     tsCreate: tsCreate || timestamp || Date.now(),
                     tsRelay: tsRelay || Date.now(),
-                    tsProcess: tsProcess
+                    tsProcess: Date.now()
                 }
             }, targetOrigin);
         }

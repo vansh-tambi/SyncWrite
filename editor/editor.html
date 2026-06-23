@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SyncWrite Editor</title>
+    <title>Editor Pane</title>
     <link rel="stylesheet" href="editor.css">
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="editor-container">
-        <!-- Text Editor Toolbar -->
         <header class="editor-toolbar">
             <div class="format-group">
                 <button class="tool-btn" data-command="bold" title="Bold">
@@ -31,13 +29,11 @@
             </div>
         </header>
 
-        <!-- Rich Text Input Area -->
-        <div id="rich-editor" class="editor-area" contenteditable="true" placeholder="Type and format text..."></div>
+        <div id="rich-editor" class="editor-area" contenteditable="true" placeholder="Type here..."></div>
 
-        <!-- Footer / Meta Bar -->
         <footer class="editor-footer">
             <div class="meta-item">
-                <span id="editor-indicator">Loading Frame...</span>
+                <span id="editor-indicator">Loading...</span>
             </div>
         </footer>
     </div>
