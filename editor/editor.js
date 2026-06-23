@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
             action: actionName,
             html: currentHTML,
             senderId: frameId,
+            tsCreate: Date.now(), // Message creation timestamp
             timestamp: Date.now() // timestamp helps host route updates in correct order
         };
 
@@ -271,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('message', (event) => {
         if (!event.data || typeof event.data !== 'object') return;
 
-        const { type, html, senderId, messageId } = event.data;
+        const { type, html, senderId, messageId, tsCreate, tsRelay } = event.data;
         if (type === 'FORMAT_SYNC') {
             // Deduplication Guard: Ignore recently processed messages
             if (messageId && processedMessageIds.has(messageId)) {
@@ -315,6 +316,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Release Lock after UI update has finished rendering
             isApplyingRemoteChange = false;
+
+            // Capture receiver processing completion timestamp
+            const tsProcess = Date.now();
+
+            // Send performance metrics report to the parent window
+            window.parent.postMessage({
+                type: 'SYNC_METRICS',
+                receiverId: frameId,
+                originalSenderId: senderId,
+                metrics: {
+                    tsCreate: tsCreate || event.data.timestamp || Date.now(),
+                    tsRelay: tsRelay || Date.now(),
+                    tsProcess: tsProcess
+                }
+            }, '*');
         }
     });
 });

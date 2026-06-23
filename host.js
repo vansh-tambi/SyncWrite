@@ -108,60 +108,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const time = new Date().toLocaleTimeString();
-        const action = payload.action || 'unknown';
         const type = payload.type || 'unknown';
 
-        // Update Statistics counters upon message receipt
-        totalReceived++;
-        if (isFromA) {
-            fromA++;
-        } else {
-            fromB++;
-        }
-        lastSyncTime = time;
-
-        // Calculate sync latency (difference between broadcast timestamp and host receipt)
-        if (payload.timestamp) {
-            const latency = Date.now() - payload.timestamp;
-            // Prevent clock skew negative differences or excessive local delays
-            if (latency >= 0 && latency < 5000) {
-                totalLatency += latency;
-                latencyCount++;
+        if (type === 'FORMAT_SYNC') {
+            // Update Statistics counters upon message receipt
+            totalReceived++;
+            if (isFromA) {
+                fromA++;
+            } else {
+                fromB++;
             }
-        }
+            lastSyncTime = time;
 
-        // Log the message receipt with specific parameters to console (Timestamp, Sender, Action, Payload Type)
-        console.log(`[Host Sync Log] [${time}] Sender: ${senderName} | Action: ${action} | Type: ${type}`, payload);
+            // Log event receipt to console
+            console.log(`[Host Sync Log] [${time}] Received formatting command from ${senderName}:`, payload);
 
-        // Render in UI log panel (Timestamp, Sender, Action, Payload Type)
-        const entry = document.createElement('div');
-        entry.className = `log-entry rx-msg`;
-        
-        const timestampSpan = document.createElement('span');
-        timestampSpan.className = 'timestamp';
-        timestampSpan.textContent = `[${time}]`;
-        
-        entry.appendChild(timestampSpan);
-        
-        const textNode = document.createTextNode(
-            ` Sender: ${senderName} | Action: ${action} | Type: ${type}`
-        );
-        entry.appendChild(textNode);
-        
-        logOutput.appendChild(entry);
-        logOutput.scrollTop = logOutput.scrollHeight;
+            // E. Relay the message to the opposite iframe window
+            if (targetWindow) {
+                totalSent++;
+                
+                // Attach the host relay execution timestamp
+                payload.tsRelay = Date.now();
 
-        // E. Relay the message to the opposite iframe window
-        if (targetWindow) {
-            totalSent++;
+                // Route the payload. Origin '*' is used for local file support,
+                // but can be replaced with expectedOrigin if running on HTTP/S servers.
+                targetWindow.postMessage(payload, '*');
+            }
+
+            // Refresh stats elements
+            updateStatsUI();
+
+        } else if (type === 'SYNC_METRICS') {
+            const { receiverId, originalSenderId, metrics } = payload;
+            if (!metrics) return;
+
+            const { tsCreate, tsRelay, tsProcess } = metrics;
+
+            // Compute performance metrics
+            // Relay Latency: Message creation to Host receipt/relay
+            const relayLatency = Math.max(0, tsRelay - tsCreate);
+            // Host to Receiver: Host relay to Receiver processing completion
+            const hostToReceiverLatency = Math.max(0, tsProcess - tsRelay);
+            // End-to-end Sync Latency
+            const totalSyncTime = Math.max(0, tsProcess - tsCreate);
+
+            // Accumulate latency metrics for global running average stats
+            totalLatency += totalSyncTime;
+            latencyCount++;
+
+            // Format UI display text strings
+            const senderLabel = originalSenderId.replace('frame-', 'Frame ').toUpperCase();
+            const receiverLabel = receiverId.replace('frame-', 'Frame ').toUpperCase();
+
+            // Log to standard developer console
+            console.log(`[Performance Metrics] [${time}] ${senderLabel} -> Host: ${relayLatency}ms | Host -> ${receiverLabel}: ${hostToReceiverLatency}ms | Total Sync Time: ${totalSyncTime}ms`);
+
+            // Append performance metrics log to the diagnostics panel on the Host Page
+            // Example format requirement:
+            // [11:13:02] Frame A -> Host : 2ms | Host -> Frame B : 1ms | Total Sync Time : 3ms
+            const entry = document.createElement('div');
+            entry.className = `log-entry rx-msg`;
             
-            // Route the payload. Origin '*' is used for local file support,
-            // but can be replaced with expectedOrigin if running on HTTP/S servers.
-            targetWindow.postMessage(payload, '*');
-        }
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = `[${time}]`;
+            entry.appendChild(timestampSpan);
 
-        // Refresh stats elements
-        updateStatsUI();
+            const textNode = document.createTextNode(
+                ` ${senderLabel} -> Host : ${relayLatency}ms | Host -> ${receiverLabel} : ${hostToReceiverLatency}ms | Total Sync Time : ${totalSyncTime}ms`
+            );
+            entry.appendChild(textNode);
+
+            logOutput.appendChild(entry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+
+            // Refresh stats elements with updated running average latency
+            updateStatsUI();
+        }
     });
 
     console.log('[Host Initialization] Host Page listener active. Origin whitelist:', expectedOrigin);
