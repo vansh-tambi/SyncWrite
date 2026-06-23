@@ -158,6 +158,102 @@ document.addEventListener('DOMContentLoaded', () => {
         debounceBroadcast('input', 300);
     }
 
+    /**
+     * Calculates the current selection/caret character offsets relative to the text content
+     * of the container element, using standard Selection and Range APIs.
+     * 
+     * @param {HTMLElement} element - The editor contenteditable element
+     * @returns {Object|null} {start, end} character offsets or null if no valid selection is active
+     */
+    function getSelectionCharacterOffsetWithin(element) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return null;
+        
+        const range = selection.getRangeAt(0);
+        // Only track if selection boundaries are fully inside the target editor
+        if (!element.contains(range.startContainer) || !element.contains(range.endContainer)) {
+            return null;
+        }
+
+        const preCaretRange = range.cloneRange();
+        preCaretRange.selectNodeContents(element);
+        preCaretRange.setEnd(range.startContainer, range.startOffset);
+        const start = preCaretRange.toString().length;
+
+        preCaretRange.setEnd(range.endContainer, range.endOffset);
+        const end = preCaretRange.toString().length;
+
+        return { start, end };
+    }
+
+    /**
+     * Restores selection boundaries in the container element using raw text offsets.
+     * 
+     * @param {HTMLElement} element - The editor contenteditable element
+     * @param {Object} offsets - The saved {start, end} character offsets
+     */
+    function setSelectionCharacterOffsetWithin(element, offsets) {
+        if (!offsets) return;
+        
+        const selection = window.getSelection();
+        if (!selection) return;
+
+        const range = document.createRange();
+        let currentOffset = 0;
+        let startNode = null;
+        let startNodeOffset = 0;
+        let endNode = null;
+        let endNodeOffset = 0;
+
+        // Traverse children nodes in depth-first order to find character matches
+        const nodeStack = [element];
+        let node;
+        let foundStart = false;
+        let foundEnd = false;
+
+        while ((node = nodeStack.pop())) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const nextOffset = currentOffset + node.length;
+                if (!foundStart && offsets.start >= currentOffset && offsets.start <= nextOffset) {
+                    startNode = node;
+                    startNodeOffset = offsets.start - currentOffset;
+                    foundStart = true;
+                }
+                if (!foundEnd && offsets.end >= currentOffset && offsets.end <= nextOffset) {
+                    endNode = node;
+                    endNodeOffset = offsets.end - currentOffset;
+                    foundEnd = true;
+                }
+                if (foundStart && foundEnd) break;
+                currentOffset = nextOffset;
+            } else {
+                let i = node.childNodes.length;
+                while (i--) {
+                    nodeStack.push(node.childNodes[i]);
+                }
+            }
+        }
+
+        // Fallbacks if offset exceeds actual text boundary (e.g. text was deleted)
+        if (!startNode) {
+            startNode = element;
+            startNodeOffset = 0;
+        }
+        if (!endNode) {
+            endNode = startNode;
+            endNodeOffset = startNodeOffset;
+        }
+
+        try {
+            range.setStart(startNode, startNodeOffset);
+            range.setEnd(endNode, endNodeOffset);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } catch (e) {
+            console.warn('[Caret Preservation] Failed to restore selection range', e);
+        }
+    }
+
     // 2. Attach click listeners to toolbar buttons
     toolButtons.forEach(btn => {
         btn.addEventListener('mousedown', handleToolbarAction);
@@ -196,11 +292,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // Capture selection offsets prior to DOM modification if currently focused
+            const isEditorFocused = (document.activeElement === editor);
+            const savedCaretOffsets = isEditorFocused ? getSelectionCharacterOffsetWithin(editor) : null;
+
             // Set Lock to true prior to DOM mutation
             isApplyingRemoteChange = true;
 
             editor.innerHTML = html;
             lastContent = html;
+
+            // Restore selection offsets post DOM modification
+            if (isEditorFocused && savedCaretOffsets) {
+                setSelectionCharacterOffsetWithin(editor, savedCaretOffsets);
+            }
 
             // Trigger sync UI notification
             triggerSyncFlash(senderId || 'unknown');
