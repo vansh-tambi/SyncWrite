@@ -51,6 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Message deduplication cache
+    const processedMessageIds = new Set();
+    const MESSAGE_ID_TTL_MS = 10000; // Deduplication window duration (10 seconds)
+
     /**
      * Extracts the current HTML contents from the contenteditable div
      * and sends a 'FORMAT_SYNC' message payload to the parent window.
@@ -60,12 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Debounce timer tracking for manual keyboard input synchronization
     let debounceTimeoutId = null;
 
-    /**
-     * Extracts the current HTML contents from the contenteditable div
-     * and sends a 'FORMAT_SYNC' message payload to the parent window.
-     * 
-     * @param {string} actionName - The style action performed (e.g., 'bold', 'italic', 'strikeThrough', 'input')
-     */
     function broadcastFormatChange(actionName) {
         // Guard check: Do not broadcast if we are applying a remote update
         if (isApplyingRemoteChange) return;
@@ -77,14 +75,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lastContent = currentHTML;
 
+        // Generate a cryptographically secure unique message ID
+        const messageId = self.crypto.randomUUID ? self.crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+
         // Construct message payload matching the required specifications
         const payload = {
+            messageId: messageId,
             type: 'FORMAT_SYNC',
             action: actionName,
             html: currentHTML,
             senderId: frameId,
             timestamp: Date.now() // timestamp helps host route updates in correct order
         };
+
+        // Cache our own messageId to prevent echo loop issues (if any)
+        processedMessageIds.add(messageId);
+        setTimeout(() => {
+            processedMessageIds.delete(messageId);
+        }, MESSAGE_ID_TTL_MS);
 
         // Post message to parent window (Host page)
         window.parent.postMessage(payload, '*');
@@ -167,8 +175,21 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('message', (event) => {
         if (!event.data || typeof event.data !== 'object') return;
 
-        const { type, html, senderId } = event.data;
+        const { type, html, senderId, messageId } = event.data;
         if (type === 'FORMAT_SYNC') {
+            // Deduplication Guard: Ignore recently processed messages
+            if (messageId && processedMessageIds.has(messageId)) {
+                return;
+            }
+
+            // Register messageId to deduplicate retries
+            if (messageId) {
+                processedMessageIds.add(messageId);
+                setTimeout(() => {
+                    processedMessageIds.delete(messageId);
+                }, MESSAGE_ID_TTL_MS);
+            }
+
             // Guard Check: Skip updates if target HTML is already matching local HTML state
             if (editor.innerHTML === html) {
                 lastContent = html;
