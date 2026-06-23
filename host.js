@@ -127,12 +127,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetWindow) {
                 totalSent++;
                 
-                // Attach the host relay execution timestamp
+                // Attach the host relay execution timestamp for diagnostics
                 payload.tsRelay = Date.now();
 
-                // Route the payload. Origin '*' is used for local file support,
-                // but can be replaced with expectedOrigin if running on HTTP/S servers.
-                targetWindow.postMessage(payload, '*');
+                // Secure target origin resolution to avoid wildcard leaks
+                const targetOrigin = window.location.origin === 'null' ? '*' : window.location.origin;
+
+                // Route the payload
+                targetWindow.postMessage(payload, targetOrigin);
             }
 
             // Refresh stats elements
