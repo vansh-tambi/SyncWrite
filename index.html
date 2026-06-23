@@ -7,40 +7,35 @@
     <link rel="stylesheet" href="index.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
-            <div class="logo-area">
-                <div class="logo-icon">&lt;&gt;</div>
-                <div class="logo-text">
-                    <h1>SyncWrite</h1>
-                    <span>Iframe text synchronizer</span>
-                </div>
+            <div class="header-left">
+                <h1>SyncWrite</h1>
+                <p>Bidirectional Rich Text Synchronization</p>
             </div>
-            <div class="system-status">
-                <span class="status-indicator online"></span>
-                <span class="status-label">Active</span>
+            <div class="header-right">
+                <span class="status-dot"></span>
+                <span class="status-text">Connected</span>
             </div>
         </header>
 
         <main class="workspace">
             <div class="pane-container">
-                <div class="editor-pane">
+                <div class="editor-pane" id="pane-frame-a">
                     <div class="pane-header">
                         <span class="pane-title">Frame A</span>
-                        <div class="pane-badge">Left</div>
                     </div>
                     <div class="iframe-wrapper">
                         <iframe id="frame-a" name="frame-a" src="editor/editor.html?id=frame-a" title="Frame A"></iframe>
                     </div>
                 </div>
 
-                <div class="editor-pane">
+                <div class="editor-pane" id="pane-frame-b">
                     <div class="pane-header">
                         <span class="pane-title">Frame B</span>
-                        <div class="pane-badge">Right</div>
                     </div>
                     <div class="iframe-wrapper">
                         <iframe id="frame-b" name="frame-b" src="editor/editor.html?id=frame-b" title="Frame B"></iframe>
@@ -67,29 +62,21 @@
                         <button id="reset-stats" class="btn-clear">Reset Stats</button>
                     </div>
                     <div class="stats-content">
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <span class="stat-label">Total Sent</span>
+                        <div class="stats-cards-grid">
+                            <div class="metric-card">
+                                <span class="stat-label">Messages Sent</span>
                                 <span id="stat-total-sent" class="stat-value">0</span>
                             </div>
-                            <div class="stat-card">
-                                <span class="stat-label">Total Received</span>
+                            <div class="metric-card">
+                                <span class="stat-label">Messages Received</span>
                                 <span id="stat-total-received" class="stat-value">0</span>
                             </div>
-                            <div class="stat-card">
-                                <span class="stat-label">From Frame A</span>
+                            <div class="metric-card">
+                                <span class="stat-label">Frame A Events</span>
                                 <span id="stat-from-a" class="stat-value">0</span>
                             </div>
-                            <div class="stat-card">
-                                <span class="stat-label">From Frame B</span>
-                                <span id="stat-from-b" class="stat-value">0</span>
-                            </div>
-                            <div class="stat-card">
-                                <span class="stat-label">Last Sync</span>
-                                <span id="stat-last-sync" class="stat-value">--</span>
-                            </div>
-                            <div class="stat-card">
-                                <span class="stat-label">Avg Latency</span>
+                            <div class="metric-card">
+                                <span class="stat-label">Average Latency</span>
                                 <span id="stat-avg-latency" class="stat-value">0.0 ms</span>
                             </div>
                         </div>

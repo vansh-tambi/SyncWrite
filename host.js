@@ -109,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatsUI();
 
         } else if (type === 'SYNC_METRICS') {
-            const { receiverId, originalSenderId, metrics } = payload;
+            const { receiverId, originalSenderId, action, metrics } = payload;
             if (!metrics) return;
 
             const { tsCreate, tsRelay, tsProcess } = metrics;
@@ -124,22 +124,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const senderLabel = originalSenderId.replace('frame-', 'Frame ').toUpperCase();
             const receiverLabel = receiverId.replace('frame-', 'Frame ').toUpperCase();
 
-            // Clean, non-verbose console log
             console.log(`${senderLabel} -> Host: ${relayLatency}ms | Host -> ${receiverLabel}: ${hostToReceiverLatency}ms | Total: ${totalSyncTime}ms`);
 
-            // Clean log entry in UI Event Log
+            // Modern, compact activity feed row structure
             const entry = document.createElement('div');
-            entry.className = 'log-entry rx-msg';
+            entry.className = 'log-row';
             
-            const timestampSpan = document.createElement('span');
-            timestampSpan.className = 'timestamp';
-            timestampSpan.textContent = `[${time}]`;
-            entry.appendChild(timestampSpan);
-
-            const textNode = document.createTextNode(
-                ` ${senderLabel} -> Host: ${relayLatency}ms | Host -> ${receiverLabel}: ${hostToReceiverLatency}ms | Total: ${totalSyncTime}ms`
-            );
-            entry.appendChild(textNode);
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'log-time';
+            timeSpan.textContent = `[${time}]`;
+            
+            const sourceSpan = document.createElement('span');
+            sourceSpan.className = `log-source ${senderLabel.toLowerCase().replace(' ', '-')}`;
+            sourceSpan.textContent = senderLabel;
+            
+            const actionSpan = document.createElement('span');
+            actionSpan.className = 'log-action';
+            actionSpan.textContent = action || 'sync';
+            
+            const latencySpan = document.createElement('span');
+            latencySpan.className = 'log-latency';
+            latencySpan.textContent = `${totalSyncTime}ms`;
+            
+            entry.appendChild(timeSpan);
+            entry.appendChild(sourceSpan);
+            entry.appendChild(actionSpan);
+            entry.appendChild(latencySpan);
 
             logOutput.appendChild(entry);
             logOutput.scrollTop = logOutput.scrollHeight;

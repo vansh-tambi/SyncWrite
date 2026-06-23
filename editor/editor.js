@@ -3,9 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const editorIndicator = document.getElementById('editor-indicator');
     const toolButtons = document.querySelectorAll('.tool-btn');
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const frameId = urlParams.get('id') || 'unknown';
-    editorIndicator.textContent = frameId.toUpperCase();
+    // Fallback to window.name if query parameter is empty (e.g. some sandboxes or protocol redirects)
+    const frameId = new URLSearchParams(window.location.search).get('id') || window.name || 'unknown';
+    if (editorIndicator) {
+        editorIndicator.textContent = frameId.toUpperCase();
+    }
 
     let isRemoteUpdate = false;
     let lastContent = editor.innerHTML;
@@ -55,21 +57,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function flashStatus(sourceId) {
-        const icon = document.getElementById('sync-icon');
-        const text = document.getElementById('sync-text');
-
-        if (icon && text) {
-            icon.classList.remove('flash-sync');
-            void icon.offsetWidth; 
-            icon.classList.add('flash-sync');
-
-            const label = sourceId.replace('frame-', 'Frame ').toUpperCase();
-            text.textContent = `Synced (from ${label})`;
-
-            setTimeout(() => {
-                text.textContent = 'Synced';
-            }, 1800);
+    function flashStatus() {
+        const wrapper = document.getElementById('editor-wrapper');
+        if (wrapper) {
+            wrapper.classList.remove('flash-sync');
+            void wrapper.offsetWidth; 
+            wrapper.classList.add('flash-sync');
         }
     }
 
@@ -231,25 +224,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const isFocused = (document.activeElement === editor);
             const savedOffsets = isFocused ? getOffsets(editor) : null;
 
-            isRemoteUpdate = true;
+            try {
+                isRemoteUpdate = true;
 
-            const cleanHTML = sanitize(html);
-            editor.innerHTML = cleanHTML;
-            lastContent = cleanHTML;
+                const cleanHTML = sanitize(html);
+                editor.innerHTML = cleanHTML;
+                lastContent = cleanHTML;
 
-            if (isFocused && savedOffsets) {
-                setOffsets(editor, savedOffsets);
+                if (isFocused && savedOffsets) {
+                    setOffsets(editor, savedOffsets);
+                }
+
+                flashStatus(senderId || 'unknown');
+                updateToolbar();
+            } catch (err) {
+                console.error('Failed to apply sync update:', err);
+            } finally {
+                isRemoteUpdate = false;
             }
-
-            flashStatus(senderId || 'unknown');
-            updateToolbar();
-
-            isRemoteUpdate = false;
 
             window.parent.postMessage({
                 type: 'SYNC_METRICS',
                 receiverId: frameId,
                 originalSenderId: senderId,
+                action: e.data.action || 'sync',
                 metrics: {
                     tsCreate: tsCreate || timestamp || Date.now(),
                     tsRelay: tsRelay || Date.now(),
